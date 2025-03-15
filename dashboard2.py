@@ -1,63 +1,71 @@
-import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
+import matplotlib.pyplot as plt
 
-# Load dataset
-merged_df = pd.read_csv("Bike_Sharing.csv")
+# Load data
+day_df = pd.read_csv("day.csv")
+hour_df = pd.read_csv("hour.csv")
 
-# Title with emoji
-st.title("🚲 Bike Sharing Data Dashboard 📊")
+# Mapping weekday values to labels
+weekday_map = {0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday",
+               4: "Thursday", 5: "Friday", 6: "Saturday"}
+day_df["weekday_label"] = day_df["weekday"].map(weekday_map)
 
-# Sidebar filters
-st.sidebar.header("Filter Data 🛠️")
+# Sidebar
+st.sidebar.title("Bike Sharing Dashboard")
+st.sidebar.write("Analisis data peminjaman sepeda")
 
-# Season filter
-season_options = merged_df['season_day'].unique().tolist()
-season_filter = st.sidebar.multiselect("Select Season:", season_options, default=season_options)
+# Header
+st.title("🚲 Bike Sharing Dashboard")
+st.write("Dashboard interaktif untuk menganalisis pola peminjaman sepeda.")
 
-# Weather filter
-weather_options = merged_df['weathersit_day'].unique().tolist()
-weather_filter = st.sidebar.multiselect("Select Weather Condition:", weather_options, default=weather_options)
-
-# Apply filters
-filtered_df = merged_df[(merged_df['season_day'].isin(season_filter)) & (merged_df['weathersit_day'].isin(weather_filter))]
-
-# Visualization 1: Impact of Weather on Bike Rentals
-st.subheader("🌦️ Impact of Weather on Bike Rentals")
-fig, ax = plt.subplots(figsize=(8, 5))
-sns.boxplot(x=filtered_df['weathersit_day'], y=filtered_df['cnt_day'], ax=ax)
-ax.set_xlabel("Weather Condition")
-ax.set_ylabel("Total Bike Rentals")
-ax.set_title("Impact of Weather on Bike Rentals")
+# 1. Tren peminjaman berdasarkan musim
+st.header("Tren Peminjaman Berdasarkan Musim")
+season_trend = day_df.groupby("season")["cnt"].sum().reset_index()
+fig, ax = plt.subplots()
+sns.barplot(x="season", y="cnt", data=season_trend, palette="coolwarm", ax=ax)
+ax.set_xlabel("Musim")
+ax.set_ylabel("Jumlah Peminjaman")
 st.pyplot(fig)
 
-# Visualization 2: Hourly Bike Rental Trend
-st.subheader("🕒 Hourly Bike Rental Trend")
-fig, ax = plt.subplots(figsize=(8, 5))
-sns.lineplot(x=filtered_df['hr'], y=filtered_df['cnt_hour'], estimator='mean', errorbar=None, ax=ax)
-ax.set_xlabel("Hour of the Day")
-ax.set_ylabel("Average Bike Rentals")
-ax.set_title("Hourly Bike Rental Trend")
+# 2. Pola penggunaan berdasarkan hari dalam seminggu
+st.header("Pola Peminjaman Berdasarkan Hari")
+weekday_trend = day_df.groupby("weekday_label")["cnt"].sum().reset_index()
+fig, ax = plt.subplots()
+sns.barplot(x="weekday_label", y="cnt", data=weekday_trend, palette="viridis", ax=ax)
+ax.set_xlabel("Hari")
+ax.set_ylabel("Jumlah Peminjaman")
+plt.xticks(rotation=30)
 st.pyplot(fig)
 
-# Visualization 3: Seasonal Bike Rental Patterns
-st.subheader("🍂 Seasonal Bike Rental Patterns")
-fig, ax = plt.subplots(figsize=(8, 5))
-sns.boxplot(x=filtered_df['season_day'], y=filtered_df['cnt_day'], ax=ax)
-ax.set_xlabel("Season")
-ax.set_ylabel("Total Bike Rentals")
-ax.set_title("Seasonal Bike Rental Patterns")
+# 3. Hubungan suhu dan peminjaman
+st.header("Hubungan Suhu dan Peminjaman Sepeda")
+fig, ax = plt.subplots()
+sns.scatterplot(x="temp", y="cnt", data=day_df, alpha=0.5, color="blue", ax=ax)
+sns.regplot(x="temp", y="cnt", data=day_df, scatter=False, color="red", ax=ax)
+ax.set_xlabel("Suhu (0-1)")
+ax.set_ylabel("Jumlah Peminjaman")
 st.pyplot(fig)
 
-# Visualization 4: Total Rentals per Season and Weather Condition
-st.subheader("📊 Total Rentals per Season & Weather")
-fig, ax = plt.subplots(figsize=(8, 5))
-sns.barplot(x=filtered_df['season_day'], y=filtered_df['cnt_day'], hue=filtered_df['weathersit_day'], ax=ax)
-ax.set_xlabel("Season")
-ax.set_ylabel("Total Bike Rentals")
-ax.set_title("Total Rentals per Season & Weather")
+# 4. Waktu puncak peminjaman dalam sehari
+st.header("Waktu Puncak Peminjaman Sepeda")
+hourly_trend = hour_df.groupby("hr")["cnt"].sum().reset_index()
+fig, ax = plt.subplots()
+sns.lineplot(x="hr", y="cnt", data=hourly_trend, marker="o", color="blue", ax=ax)
+ax.set_xlabel("Jam")
+ax.set_ylabel("Jumlah Peminjaman")
 st.pyplot(fig)
 
-# Footer
-st.write("🚀 Dashboard Created with Streamlit & Matplotlib")
+# 5. Perbandingan hari kerja vs akhir pekan
+st.header("Peminjaman Sepeda: Hari Kerja vs Akhir Pekan")
+day_df["is_weekend"] = day_df["weekday"].isin([0, 6])
+weekend_vs_weekday = day_df.groupby("is_weekend")["cnt"].mean().reset_index()
+weekend_vs_weekday["is_weekend"] = weekend_vs_weekday["is_weekend"].map({True: "Weekend", False: "Weekday"})
+fig, ax = plt.subplots()
+sns.barplot(x="is_weekend", y="cnt", data=weekend_vs_weekday, palette="coolwarm", ax=ax)
+ax.set_xlabel("Kategori Hari")
+ax.set_ylabel("Rata-rata Peminjaman")
+st.pyplot(fig)
+
+st.write("Dashboard ini dibuat menggunakan Streamlit. 🚀")
